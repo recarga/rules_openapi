@@ -107,6 +107,10 @@ def _new_generator_command(ctx, gen_dir, rjars):
         mappings = _comma_separated_pairs(ctx.attr.type_mappings),
     )
 
+    gen_cmd += ' --import-mappings "{mappings}"'.format(
+        mappings = _comma_separated_pairs(ctx.attr.import_mappings),
+    )
+
     if ctx.attr.api_package:
         gen_cmd += " --api-package {package}".format(
             package = ctx.attr.api_package,
@@ -118,6 +122,14 @@ def _new_generator_command(ctx, gen_dir, rjars):
     if ctx.attr.model_package:
         gen_cmd += " --model-package {package}".format(
             package = ctx.attr.model_package,
+        )
+    if ctx.attr.template_dir:
+        gen_cmd += " --template-dir {template}".format(
+            template = ctx.file.template_dir.path,
+        )
+    if ctx.attr.library:
+        gen_cmd += " --library {library}".format(
+            library = ctx.attr.library
         )
 
     # fixme: by default, swagger-codegen is rather verbose. this helps with that but can also mask useful error messages
@@ -208,10 +220,12 @@ openapi_gen = rule(
         "api_package": attr.string(),
         "invoker_package": attr.string(),
         "model_package": attr.string(),
+        "template_dir": attr.label(allow_single_file = True),
+        "library": attr.string(),
         "additional_properties": attr.string_dict(),
         "system_properties": attr.string_dict(),
         "type_mappings": attr.string_dict(),
-        "import_mappings": attr.string(),
+        "import_mappings": attr.string_dict(),
         "_jdk": attr.label(
             default = Label("@bazel_tools//tools/jdk:current_java_runtime"),
             providers = [java_common.JavaRuntimeInfo],
