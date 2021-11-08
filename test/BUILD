@@ -61,3 +61,10 @@ openapi_gen(
         "sttpClientVersion": "2.2.0"
     },
 )
+
+load("//openapi:flat.bzl", "openapi_flat")
+
+openapi_flat(
+    name = "petstore_flat",
+    srcs = ["petstore-3.yaml"],
+)
