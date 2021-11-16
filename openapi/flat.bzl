@@ -25,10 +25,14 @@ def openapi_flat_artifact(artifact_id):
     )
 
 def _impl(ctx):
-    out = ctx.actions.declare_file("%s.yaml" % ctx.label.name)
+    if ctx.attr.output_base == "":
+        base_name = ctx.label.name
+    else:
+        base_name = "%s/%s" % (ctx.attr.output_base, ctx.label.name)
+    out = ctx.actions.declare_file("%s.yaml" % base_name)
 
     inputs = [ctx.file.template] + [f for f in ctx.files.srcs] + [f for f in ctx.files.deps]
-    outputs = [out] + [ctx.actions.declare_file("%s/%s" % (ctx.label.name, f.basename)) for f in ctx.files.srcs]
+    outputs = [out] + [ctx.actions.declare_file("%s/%s" % (base_name, f.basename)) for f in ctx.files.srcs]
     args = [ctx.file.template.path, out.path, "%s/%s" % (out.dirname, ctx.label.name)] + [f.path for f in ctx.files.srcs]
 
     ctx.actions.run(
@@ -54,6 +58,7 @@ openapi_flat = rule(
             default = "//openapi/private/templates:openapi.tpl",
             allow_single_file = True,
         ),
+        "output_base": attr.string(),
         "_executable": attr.label(
             default = Label("//openapi/private:run"),
             executable = True,
