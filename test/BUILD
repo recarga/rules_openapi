@@ -62,9 +62,9 @@ openapi_gen(
     },
 )
 
-openapi_gen(
-    name = "petstore_java_swagger3",
-    language = "java",
-    spec = "petstore.yaml",
-    codegen_cli = "//external:io_bazel_rules_openapi_swagger_3_0_43/dependency/openapi-cli",
+load("//openapi:flat.bzl", "openapi_flat")
+
+openapi_flat(
+    name = "petstore_flat",
+    srcs = ["petstore-3.yaml"],
 )

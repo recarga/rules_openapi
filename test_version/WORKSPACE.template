@@ -19,3 +19,9 @@ openapi_repositories(
     codegen_cli_provider = codegen_cli_provider,
 )
 
+load("//openapi:flat.bzl", "openapi_flat")
+
+openapi_flat(
+    name = "petstore_flat",
+    srcs = ["petstore-3.yaml"],
+)

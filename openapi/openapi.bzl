@@ -9,20 +9,19 @@ load("@bazel_tools//tools/build_defs/repo:jvm.bzl", "jvm_maven_import_external")
 _SUPPORTED_PROVIDERS = {
     "swagger": {
         "artifact": "io.swagger:swagger-codegen-cli",
-        "name": "io_swagger_swagger_codegen_cli"
+        "name": "io_swagger_swagger_codegen_cli",
     },
     "swaggerv3": {
         "artifact": "io.swagger.codegen.v3:swagger-codegen-cli",
-        "name": "io_swagger_codegen_v3_swagger_codegen_cli"
+        "name": "io_swagger_codegen_v3_swagger_codegen_cli",
     },
     "openapi": {
         "artifact": "org.openapitools:openapi-generator-cli",
-        "name": "org_openapitools_openapi_generator_cli"
-    }
+        "name": "org_openapitools_openapi_generator_cli",
+    },
 }
 
 def openapi_repositories(codegen_cli_version = "2.4.16", codegen_cli_sha256 = "154b5a37254a3021a8cb669a1c57af78b45bb97e89e0425e3f055b1c79f74a93", prefix = "io_bazel_rules_openapi", codegen_cli_provider = "swagger"):
-
     jvm_maven_import_external(
         name = prefix + "_" + _SUPPORTED_PROVIDERS[codegen_cli_provider]["name"],
         artifact = _SUPPORTED_PROVIDERS[codegen_cli_provider]["artifact"] + ":" + codegen_cli_version,
@@ -34,7 +33,6 @@ def openapi_repositories(codegen_cli_version = "2.4.16", codegen_cli_sha256 = "1
         name = prefix + "/dependency/openapi-cli",
         actual = "@" + prefix + "_" + _SUPPORTED_PROVIDERS[codegen_cli_provider]["name"] + "//jar",
     )
-
 
 def _comma_separated_pairs(pairs):
     return ",".join([
@@ -60,12 +58,13 @@ def _is_openapi_codegen(ctx):
     return _generator_provider(ctx) == "openapi"
 
 def _openapi_major_version(ctx):
-    name = ctx.file.codegen_cli.path.split('/').pop(-1) # Extract JAR's name
+    name = ctx.file.codegen_cli.path.split("/").pop(-1)  # Extract JAR's name
+
     # name should look like openapi-generator-cli-5.0.0.jar
-    # 1. Split on - and take the last part (5.0.0.jar) 
+    # 1. Split on - and take the last part (5.0.0.jar)
     # 2. Remove the .jar and split on the '.'
     # 3. Take the first element of the list (major)
-    version = name.split("-").pop(-1).replace(".jar", "").split(".").pop(0) # 
+    version = name.split("-").pop(-1).replace(".jar", "").split(".").pop(0)  #
     return int(version)
 
 def _new_generator_command(ctx, gen_dir, rjars):
@@ -126,6 +125,10 @@ def _new_generator_command(ctx, gen_dir, rjars):
         mappings = _comma_separated_pairs(ctx.attr.type_mappings),
     )
 
+    gen_cmd += ' --import-mappings "{mappings}"'.format(
+        mappings = _comma_separated_pairs(ctx.attr.import_mappings),
+    )
+
     if ctx.attr.api_package:
         gen_cmd += " --api-package {package}".format(
             package = ctx.attr.api_package,
@@ -138,10 +141,22 @@ def _new_generator_command(ctx, gen_dir, rjars):
         gen_cmd += " --model-package {package}".format(
             package = ctx.attr.model_package,
         )
+    if ctx.attr.template_dir:
+        gen_cmd += " --template-dir {template}".format(
+            template = ctx.file.template_dir.path,
+        )
+    if ctx.attr.library:
+        gen_cmd += " --library {library}".format(
+            library = ctx.attr.library,
+        )
+    if ctx.attr.ignore_file_override:
+        gen_cmd += " --ignore-file-override {ignore_file_override}".format(
+            ignore_file_override = ctx.file.ignore_file_override.path,
+        )
 
     # fixme: by default, swagger-codegen is rather verbose. this helps with that but can also mask useful error messages
     # when it fails. look into log configuration options. it's a java app so perhaps just a log4j.properties or something
-    gen_cmd += " 2>/dev/null"
+    # gen_cmd += " 2>/dev/null"
     return gen_cmd
 
 def _impl(ctx):
@@ -172,6 +187,8 @@ def _impl(ctx):
         ctx.file.codegen_cli,
         ctx.file.spec,
     ] + _collect_files(ctx.attr.spec_refs) + cjars.to_list() + rjars.to_list()
+    if ctx.file.ignore_file_override:
+        inputs += [ctx.file.ignore_file_override]
     ctx.actions.run_shell(
         inputs = inputs,
         outputs = [ctx.actions.declare_directory("%s" % (ctx.attr.name)), ctx.outputs.codegen],
@@ -216,7 +233,7 @@ def _collect_jars(targets):
 def _collect_files(targets):
     result = []
     for target in targets:
-       result += target.files.to_list()
+        result += target.files.to_list()
     return result
 
 openapi_gen = rule(
@@ -238,10 +255,16 @@ openapi_gen = rule(
         "api_package": attr.string(),
         "invoker_package": attr.string(),
         "model_package": attr.string(),
+        "template_dir": attr.label(allow_single_file = True),
+        "library": attr.string(),
         "additional_properties": attr.string_dict(),
         "system_properties": attr.string_dict(),
         "type_mappings": attr.string_dict(),
-        "import_mappings": attr.string(),
+        "import_mappings": attr.string_dict(),
+        "ignore_file_override": attr.label(
+            allow_single_file = True,
+            default = None,
+        ),
         "_jdk": attr.label(
             default = Label("@bazel_tools//tools/jdk:current_java_runtime"),
             providers = [java_common.JavaRuntimeInfo],
